@@ -1,4 +1,39 @@
 <?php
+
+/**
+ * Attempt to make old slugs work a la wp_old_slug_redirect() in REST posts endpoint.
+ */
+add_action( 'rest_api_init', function() {
+    add_filter( 'the_posts', function( $posts, $query ) {
+        global $wp_query;
+
+        // Only try to redirect if there were no posts found.
+        if ( empty( $posts ) ) {
+            // Set up the global wp_query so wp_old_slug_redirect() will think we're in a template & redirect accordingly.
+            $wp_query = $query;
+            $wp_query->set_404();
+            $wp_query->set( 'name', $wp_query->get( 'post_name__in' )[0] );
+
+            // Add filter to old_slug_redirect_post_id in order to prevent the default frontend redirect in favor of a REST API URL.
+            add_filter( 'old_slug_redirect_post_id', function( $id ) use ( $wp_query ) {
+                $post = get_post( $id );
+                $redirect_url = $_SERVER['REQUEST_URI'];
+                $redirect_url = str_replace( $wp_query->get( 'name' ), $post->post_name, $redirect_url );
+                wp_redirect( $redirect_url, 301 );
+                exit;
+            } );
+
+            // Finally, call wp_old_slug_redirect() and let our filter interrupt it to handle the final wp_redirect().
+            wp_old_slug_redirect();
+        }
+
+        return $posts;
+    }, 10, 2);
+});
+
+
+
+
 /**
  * Register custom REST API routes.
  */

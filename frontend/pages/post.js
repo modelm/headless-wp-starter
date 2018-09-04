@@ -10,9 +10,15 @@ class Post extends Component {
     static async getInitialProps(context) {
         const { slug, apiRoute } = context.query;
         const res = await fetch(
-            `${Config.apiUrl}/wp-json/postlight/v1/${apiRoute}?slug=${slug}`
+            `${Config.apiUrl}/wp-json/wp/v2/posts?slug=${slug}`
         );
-        const post = await res.json();
+        const post = await res.json().then((data) => {
+            if (data.length) {
+                return Promise.resolve(data[0]);
+            }
+            return Promise.reject('Post "' + slug + '" not found.');
+
+        });
         return { post };
     }
 
